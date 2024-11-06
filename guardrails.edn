@@ -1,0 +1,7 @@
+{:throw?                 false
+ :tap>?                  false
+ :guardrails/compact?    true
+ :guardrails/mcps        50
+ :guardrails/trace?      false
+ :guardrails/stack-trace :none
+ :guardrails/use-stderr? true }
