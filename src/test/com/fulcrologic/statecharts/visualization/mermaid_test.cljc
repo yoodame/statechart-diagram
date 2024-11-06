@@ -44,7 +44,7 @@
     (mm/state-name :a/b) => "a/b"
     (mm/state-name :foo.a/b) => "foo.a/b"))
 
-(specification "Transition" :focus
+(specification "Transitions for a given node" :focus
   (let [chart (statechart {}
                 (ele/initial {:id :initial} :state/primary)
 
@@ -59,7 +59,7 @@
                 (ele/state {:id            :state/other
                             :diagram/label "Other State"}))]
     (assertions
-      "For a given parent"
+      "ROOT"
       (mm/transitions-for chart :ROOT) => ["initial --> state/primary"
                                            "state/primary --> state/other"
                                            "state/primary --> state/other"])))
