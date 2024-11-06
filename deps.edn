@@ -1,4 +1,10 @@
-{:paths ["src"]
- :deps  {org.clojure/clojure         {:mvn/version "1.12.0"}
-         com.fulcrologic/statecharts {:mvn/version "1.2.6"}
-         camel-snake-kebab/camel-snake-kebab {:mvn/version "0.4.3"}}}
+{:paths   ["src/main"]
+ :deps    {org.clojure/clojure                 {:mvn/version "1.12.0"}
+           com.fulcrologic/statecharts         {:mvn/version "1.2.6"}
+           fulcrologic/fulcro-spec             {:mvn/version "3.1.12"}
+           camel-snake-kebab/camel-snake-kebab {:mvn/version "0.4.3"}}
+ :aliases {:test {:extra-paths ["src/test"]
+                  :extra-deps  {org.clojure/test.check  {:mvn/version "1.1.1"}
+                                com.wsscode/pathom      {:mvn/version "2.3.1"}
+                                fulcrologic/fulcro-spec {:mvn/version "3.1.12"
+                                                         :exclusions  [com.fulcrologic/fulcro]}}}}}

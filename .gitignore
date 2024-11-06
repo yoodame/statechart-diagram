@@ -28,3 +28,5 @@
 /classes
 /target
 
+.idea
+statechart-diagram.iml
