@@ -32,6 +32,9 @@
   [:keyword => (? :string)]
   (str/join "/" (keep identity [(namespace state-id) (name state-id)])))
 
+(def ^:dynamic *indent* 0)
+(defn indent [] (str/join "" (repeat *indent* " ")))
+
 (>defn transitions-for [{::sc/keys [elements-by-id] :as chart} parent-id]
   [::sc/statechart :keyword => any?]
   (let [{:keys [children]} (if (= parent-id :ROOT) chart (get elements-by-id parent-id))
@@ -47,14 +50,60 @@
                             (mapcat
                               (fn [{:keys [target parent] :as node}]
                                 (mapv
-                                  (fn [t]
-                                    (str (state-name parent) " --> " (state-name t))
-                                    #_{:source parent
-                                     :target t
-                                     :label (element-label node)})
+                                  (fn [t] (str (indent)
+                                            (if (get-in elements-by-id [parent :initial?])
+                                              "[*]"
+                                              (state-name parent))
+                                            " --> "
+                                            (if (= :final (get-in elements-by-id [t :node-type]))
+                                              "[*]"
+                                              (state-name t))))
                                   target)))
                             transition-nodes)
                           ))
                       []
                       children)]
     transitions))
+
+(defmulti render (fn [chart ele] (:node-type ele)))
+
+(defn- render-composite [{::sc/keys [elements-by-id] :as chart} {:keys [id children]}]
+  (let [nodes  (mapv elements-by-id children)
+        states (filterv #(#{:state :parallel} (:node-type %)) nodes)]
+    (str/join "\n"
+      (concat
+        ;; State declarations with labels
+        (keep (fn [{:keys [id initial?] :as state}]
+                (when-not initial?
+                  (str (indent) (state-name id) ": " (element-label state))))
+          states)
+        ;; transitions
+        (transitions-for chart id)
+        ;; emit the nested states/parallel elemements recursively
+        (map (fn [s] (render chart s)) states)))))
+
+(defmethod render :statechart [{::sc/keys [elements-by-id] :as chart} {:keys [id children] :as node}]
+  (binding [*indent* (+ 3 *indent*)]
+    (str "stateDiagram-v2\n"
+      (render-composite chart node))))
+
+(defmethod render :parallel [{::sc/keys [elements-by-id] :as chart} {:keys [id children]}]
+  (let [nodes  (mapv elements-by-id children)
+        states (filterv #(= :state (:node-type %)) nodes)]
+    (str (indent) "state " (state-name id) " {\n"
+      (binding [*indent* (+ 3 *indent*)]
+        (str/join (str "\n" (indent) "--\n")
+          (map (fn [state] (render chart state)) states)))
+      "\n"(indent) "}")))
+
+(defmethod render :default [{::sc/keys [elements-by-id] :as chart} {:keys [id children]}] (str "FIXME"))
+
+(defmethod render :state [{::sc/keys [elements-by-id] :as chart} {:keys [id children] :as node}]
+  (let [nodes   (mapv elements-by-id children)
+        states  (filterv #(= :state (:node-type %)) nodes)
+        atomic? (empty? states)]
+    (when-not atomic?
+      (str (indent) "state " (state-name id) " {\n"
+        (binding [*indent* (+ *indent* 3)]
+          (render-composite chart node))
+        (indent) "}"))))

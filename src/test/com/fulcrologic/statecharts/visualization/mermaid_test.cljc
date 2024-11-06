@@ -1,5 +1,6 @@
 (ns com.fulcrologic.statecharts.visualization.mermaid-test
   (:require
+    [clojure.string :as str]
     [com.fulcrologic.statecharts.elements :as ele]
     [com.fulcrologic.statecharts.chart :refer [statechart]]
     [com.fulcrologic.statecharts :as sc]
@@ -44,7 +45,32 @@
     (mm/state-name :a/b) => "a/b"
     (mm/state-name :foo.a/b) => "foo.a/b"))
 
-(specification "Transitions for a given node" :focus
+(specification "Transitions for a given node"
+  (binding [mm/*indent* 3]
+    (let [chart (statechart {}
+                  (ele/initial {:id :initial} :state/primary)
+
+                  (ele/state {:id :state/primary}
+                    (ele/transition {:id            :t2
+                                     :diagram/label "empty?"
+                                     :target        :state/other})
+                    (ele/transition {:id            :t1
+                                     :diagram/label "else"
+                                     :target        :state/other}))
+
+                  (ele/state {:id            :state/other
+                              :diagram/label "Other State"}
+                    (ele/transition {:target :final}))
+
+                  (ele/final {:id :final}))]
+      (assertions
+        "ROOT (honors indent)"
+        (mm/transitions-for chart :ROOT) => ["   [*] --> state/primary"
+                                             "   state/primary --> state/other"
+                                             "   state/primary --> state/other"
+                                             "   state/other --> [*]"]))))
+
+(specification "render"
   (let [chart (statechart {}
                 (ele/initial {:id :initial} :state/primary)
 
@@ -54,12 +80,56 @@
                                    :target        :state/other})
                   (ele/transition {:id            :t1
                                    :diagram/label "else"
-                                   :target        :state/other}))
+                                   :target        :state/other})
+
+                  (ele/state {:id :state.primary/nested1})
+
+                  (ele/state {:id :state.primary/nested2}))
 
                 (ele/state {:id            :state/other
                             :diagram/label "Other State"}))]
     (assertions
       "ROOT"
-      (mm/transitions-for chart :ROOT) => ["initial --> state/primary"
-                                           "state/primary --> state/other"
-                                           "state/primary --> state/other"])))
+      (mm/render chart chart) => (str/join "\n"
+                                   ["stateDiagram-v2"
+                                    "   state/primary: Primary"
+                                    "   state/other: Other State"
+                                    "   [*] --> state/primary"
+                                    "   state/primary --> state/other"
+                                    "   state/primary --> state/other"]))))
+
+(specification "render parallel" :focus
+  (let [chart (statechart {}
+                (ele/state {:id :A}
+                  (ele/transition {:target :B}))
+
+                (ele/state {:id :B}
+                  (ele/transition {:target :C}))
+
+                (ele/parallel {:id :C}
+                  (ele/state {:id :state/primary}
+                    (ele/transition {:id     :t2
+                                     :target :state/other})
+                    (ele/transition {:id     :t1
+                                     :target :state/nested2})
+
+                    (ele/state {:id :state.primary/nested1})
+
+                    (ele/state {:id :state.primary/nested2}))
+
+                  (ele/state {:id            :state/other
+                              :diagram/label "Other State"}
+                    (ele/state {:id            :state.other/A
+                                :diagram/label "Other A"})
+                    (ele/state {:id            :state.other/B
+                                :diagram/label "Other B"}))))]
+    (println (mm/render chart chart))
+    (assertions
+      "ROOT"
+      (mm/render chart chart) => (str/join "\n"
+                                   ["stateDiagram-v2"
+                                    "   state/primary: Primary"
+                                    "   state/other: Other State"
+                                    "   [*] --> state/primary"
+                                    "   state/primary --> state/other"
+                                    "   state/primary --> state/other"]))))
