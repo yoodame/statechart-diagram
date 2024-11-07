@@ -5,6 +5,8 @@
         :clj  [[com.fulcrologic.fulcro.dom-server :as dom]
                [clojure.data.json :as json]])
     [com.fulcrologic.fulcro.components :as comp]
+    [com.fulcrologic.statecharts :as sc]
+    [camel-snake-kebab.core :refer [->PascalCaseString]]
     [clojure.string :as str]
     [clojure.core.async :as async]
     [taoensso.timbre :as log])
@@ -106,8 +108,8 @@
                                              {:id "ie1" :sources ["n4"] :targets ["n5"]}
                                              {:id "ie2" :sources ["n5"] :targets ["n6"]}
                                              {:id "ie3" :sources ["n6"] :targets ["n1"]}]}))]
-      (def -result result)))
-  )
+      (def -result result))))
+
 
 (defn render-node [{:keys [id x y width height children] :as props}]
   (dom/g {}
@@ -151,3 +153,23 @@
         (dom/polygon {:points "0 0, 10 3.5, 0 7", :fill "black"})))
     (mapv render-node children)
     (mapv render-edge edges)))
+
+(defn id->str [id] (str/join "/" (keep identity [(namespace id) (name id)])))
+
+(defmulti chart->elk (fn [chart ele] (:node-type ele)))
+
+(defmethod chart->elk :state [_ {:keys [id]}]
+  {:id id})
+
+(defn chart->edges
+  "Converts chart elements into elk edges"
+  [chart]
+  (let [{::sc/keys [elements-by-id]} chart
+        nodes (filterv #(#{:transition} (:node-type %)) (vals elements-by-id))]
+    (mapv
+      (fn [{:keys [cond target parent] :as node}]
+        {:id (id->str (:id node))
+         :source [(id->str parent)]
+         :target (mapv id->str target)
+         :data {:label (:diagram/label node)}})
+      nodes)))
