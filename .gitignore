@@ -30,3 +30,8 @@
 
 .idea
 statechart-diagram.iml
+.portal/
+yarn.lock
+node_modules
+.shadow-cljs/
+resources/public/js

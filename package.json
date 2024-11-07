@@ -1,0 +1,20 @@
+{
+  "name": "statecharts-diagram",
+  "version": "1.0.0",
+  "description": "Digram tools for statecharts",
+  "directories": {},
+  "devDependencies": {
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "shadow-cljs": "2.28.19",
+    "transit-js": "0.8.874"
+  },
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@xyflow/react": "^12.3.4",
+    "elkjs": "^0.9.3",
+    "highlight.js": "9.18.5",
+    "react-grid-layout": "0.18.3"
+  }
+}
