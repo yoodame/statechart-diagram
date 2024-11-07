@@ -22,47 +22,65 @@
   {:query         [:ui/none]
    :initial-state {:ui/none 42}
    :use-hooks?    true}
-  (let [graph {:id            "root",
-               :layoutOptions {"elk.hierarchyHandling"                     "INCLUDE_CHILDREN",
-                               "elk.algorithm"                             "layered",
-                               "elk.layered.considerModelOrder"            "NODES_AND_EDGES",
-                               "elk.layered.wrapping.strategy"             "MULTI_EDGE",
-                               "elk.aspectRatio"                           "2",
-                               "elk.direction"                             "RIGHT",
-                               "elk.spacing.nodeNode"                      50 ; vertical
-                               "elk.layered.spacing.nodeNodeBetweenLayers" 50} ; horizontal
-               :children      [{:id "n1", :width 50, :height 50},
-                               {:id "n2", :width 50, :height 50},
-                               {:id       "n3", :width 50, :height 50
-                                :children [{:id     "n4"
-                                            :width  10
-                                            :height 10}
-                                           {:id     "n5"
-                                            :width  10
-                                            :height 10}
-                                           {:id     "n6"
-                                            :width  10
-                                            :height 10}]}],
-               :edges         [{:id "e1", :sources ["n1"], :targets ["n2"]},
-                               {:id "e2", :sources ["n1"], :targets ["n3"]}
-                               {:id "ie1" :sources ["n4"] :targets ["n5"]}
-                               {:id "ie2" :sources ["n5"] :targets ["n6"]}
-                               {:id "ie3" :sources ["n6"] :targets ["n1"]}]}
-        [layout set-layout!] (hooks/use-state nil)]
+  (let [graph                 {:id            "root",
+                               :layoutOptions {"elk.hierarchyHandling"                     "INCLUDE_CHILDREN",
+                                               "elk.algorithm"                             "layered",
+                                               "elk.layered.considerModelOrder"            "NODES_AND_EDGES",
+                                               "elk.layered.wrapping.strategy"             "MULTI_EDGE",
+                                               "elk.aspectRatio"                           "2",
+                                               "elk.direction"                             "RIGHT",
+                                               "elk.spacing.nodeNode"                      50 ; vertical
+                                               "elk.layered.spacing.nodeNodeBetweenLayers" 50} ; horizontal
+                               :children      [{:id "n1", :width 50, :height 50},
+                                               {:id "n2", :width 50, :height 50},
+                                               {:id       "n3", :width 50, :height 50
+                                                :children [{:id     "n4"
+                                                            :width  10
+                                                            :height 10}
+                                                           {:id     "n5"
+                                                            :width  10
+                                                            :height 10}
+                                                           {:id     "n6"
+                                                            :width  10
+                                                            :height 10}]}],
+                               :edges         [{:id "e1", :sources ["n1"], :targets ["n2"]},
+                                               {:id "e2", :sources ["n1"], :targets ["n3"]}
+                                               {:id "ie1" :sources ["n4"] :targets ["n5"]}
+                                               {:id "ie2" :sources ["n5"] :targets ["n6"]}
+                                               {:id "ie3" :sources ["n6"] :targets ["n1"]}]}
+        [layout set-layout!] (hooks/use-state nil)
+        nodes                 [{:id "A"} {:id "B"}]
+        node-id->dom-node-ref (into {}
+                                (map (fn [{:keys [id]}] [id (hooks/use-ref nil)]))
+                                nodes)]
     (hooks/use-effect
       (fn []
-        (async/go
-          (let [lo (async/<! (elk/layout! graph))]
-            (log/spy :info lo)
-            (set-layout! lo)))
+        (when (every? #(some? (.-current %)) (vals node-id->dom-node-ref))
+          (let [nodes (mapv
+                        (fn [{:keys [id]}]
+                          (let [dom-node (.-current (node-id->dom-node-ref id))
+                                size     (.getBoundingClientRect dom-node)]
+                            {:id     id
+                             :width  (.-width size)
+                             :height (.-height size)}))
+                        nodes)]
+            (async/go
+              (let [lo (async/<! (elk/layout! graph))]
+                (log/spy :info lo)
+                (set-layout! lo)))))
         js/undefined)
-      [])
-    (dom/div {:style {:paddingTop "20px"
-                      :width      "300px"
-                      :height     "300px"}}
-      (dom/h2 "Graph")
-      (when layout
-        (elk/render-layout layout)))))
+      [(every? #(some? (.-current %)) (vals node-id->dom-node-ref))])
+    (mapv
+      (fn [{:keys [id]}]
+        (dom/div {:ref (node-id->dom-node-ref id)}
+          (str id)))
+      nodes)
+    #_(dom/div {:style {:paddingTop "20px"
+                        :width      "300px"
+                        :height     "300px"}}
+        (dom/h2 "Graph")
+        (when layout
+          (elk/render-layout layout)))))
 
 (ws/defcard elk-demo-card
   (ct.fulcro/fulcro-card
